@@ -1,0 +1,86 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "EncryptedChat.Common";
+
+import "google/protobuf/timestamp.proto";
+
+service Chat {
+  rpc SendMessage(ChatMessageRequest) returns (ChatMessageResponse);
+
+  rpc DeleteMessage(DeleteChatMessageRequest) returns (DeleteChatMessageResponse);
+
+  rpc GetMessages(ChatRequest) returns (ChatResponse);
+
+  rpc ReceiveMessages(ChatReceiveRequest) returns (stream ChatMessage);
+
+  rpc GetCryptographicKeys(CryptographicKeysRequest) returns (CryptographicKeysReponse);
+
+  rpc UpdateCryptographicKeys(CryptographicKeysUpdateRequest) returns (CryptographicKeysUpdateResponse);
+}
+
+message ChatMessageRequest {
+  string receiver_id = 1;
+  bytes encrypted_message = 2;
+  uint32 cryptographic_version = 3;
+}
+
+message ChatMessageResponse {
+  bool success = 1;
+}
+
+message DeleteChatMessageRequest {
+  string target_id = 1;
+  uint32 message_id = 2;
+}
+
+message DeleteChatMessageResponse {
+  bool success = 1;
+}
+
+message ChatRequest {
+  string target_id = 1;
+}
+
+message ChatResponse {
+  repeated ChatMessage messages = 1;
+}
+
+message ChatReceiveRequest {
+  string target_id = 1;
+}
+
+message ChatMessage {
+  string sender_id = 1;
+  string receiver_id = 2;
+  uint32 message_id = 3;
+  bytes encrypted_message = 4;
+  google.protobuf.Timestamp timestamp = 5;
+  uint32 cryptographic_version = 6;
+  bool deleted = 7;
+}
+
+message CryptographicKeysRequest {
+  string target_id = 1;
+  optional uint32 minimum = 2;
+  optional uint32 maximum = 3;
+}
+
+message CryptographicKeysReponse {
+  repeated CryptographicKey keys = 1;
+  
+  message CryptographicKey {
+    bytes key = 1;
+    uint32 version = 2;
+  }
+}
+
+message CryptographicKeysUpdateRequest {
+  string target_id = 1;
+  bytes own_encrypted_key = 2;
+  bytes target_encrypted_key = 3;
+}
+
+message CryptographicKeysUpdateResponse {
+  bool success = 1;
+  uint32 version = 2;
+}

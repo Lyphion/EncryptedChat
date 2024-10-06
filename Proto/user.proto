@@ -1,0 +1,37 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "EncryptedChat.Common";
+
+service User {
+  rpc GetUsers(UsersRequest) returns (UsersReponse);
+  
+  rpc GetUser(UserRequest) returns (UserResponse);
+  
+  rpc UpdatePublicKey(PublicKeyRequest) returns (PublicKeyResponse);
+}
+
+message UsersRequest {
+  optional string name = 1;
+}
+
+message UsersReponse {
+  repeated UserResponse users = 1;
+}
+
+message UserRequest {
+  string id = 1;
+}
+
+message UserResponse {
+  string id = 1;
+  string name = 2;
+  bytes public_key = 4;
+}
+
+message PublicKeyRequest {
+  bytes public_key = 4;
+}
+
+message PublicKeyResponse {
+  bool success = 1;
+}

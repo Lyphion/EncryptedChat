@@ -1,3 +1,9 @@
-﻿// See https://aka.ms/new-console-template for more information
+﻿using EncryptedChat.Common;
+using Grpc.Net.Client;
 
-Console.WriteLine("Hello, World!");
+using var channel = GrpcChannel.ForAddress("https://localhost:7001");
+var chatClient = new Chat.ChatClient(channel);
+var userClient = new User.UserClient(channel);
+
+
+
