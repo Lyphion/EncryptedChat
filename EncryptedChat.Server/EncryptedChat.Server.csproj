@@ -4,6 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>63423740-4d47-46d5-a038-b2040842ff9e</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
@@ -12,7 +13,11 @@
   </ItemGroup>
   
   <ItemGroup>
+    <PackageReference Include="CSharpFunctionalExtensions" Version="3.1.0" />
+    <PackageReference Include="Dapper" Version="2.1.35" />
     <PackageReference Include="Grpc.AspNetCore" Version="2.66.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.8" />
+    <PackageReference Include="System.Data.SQLite" Version="1.0.119" />
   </ItemGroup>
 
 </Project>

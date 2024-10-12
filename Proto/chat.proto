@@ -11,7 +11,7 @@ service Chat {
 
   rpc GetMessages(ChatRequest) returns (ChatResponse);
 
-  rpc ReceiveMessages(ChatReceiveRequest) returns (stream ChatMessage);
+  rpc ReceiveMessages(ChatReceiveRequest) returns (stream ChatNotification);
 
   rpc GetCryptographicKeys(CryptographicKeysRequest) returns (CryptographicKeysReponse);
 
@@ -19,9 +19,9 @@ service Chat {
 }
 
 message ChatMessageRequest {
-  string receiver_id = 1;
+  string target_id = 1;
   bytes encrypted_message = 2;
-  uint32 cryptographic_version = 3;
+  uint32 key_version = 3;
 }
 
 message ChatMessageResponse {
@@ -39,30 +39,32 @@ message DeleteChatMessageResponse {
 
 message ChatRequest {
   string target_id = 1;
+  optional uint32 minimum_message_id = 2;
+  optional uint32 maximum_message_id = 3;
 }
 
 message ChatResponse {
-  repeated ChatMessage messages = 1;
+  repeated ChatNotification messages = 1;
 }
 
 message ChatReceiveRequest {
   string target_id = 1;
 }
 
-message ChatMessage {
+message ChatNotification {
   string sender_id = 1;
   string receiver_id = 2;
   uint32 message_id = 3;
   bytes encrypted_message = 4;
   google.protobuf.Timestamp timestamp = 5;
-  uint32 cryptographic_version = 6;
+  uint32 key_version = 6;
   bool deleted = 7;
 }
 
 message CryptographicKeysRequest {
   string target_id = 1;
-  optional uint32 minimum = 2;
-  optional uint32 maximum = 3;
+  optional uint32 minimum_version = 2;
+  optional uint32 maximum_version = 3;
 }
 
 message CryptographicKeysReponse {
