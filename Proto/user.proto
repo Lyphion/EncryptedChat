@@ -14,8 +14,8 @@ service User {
 
 message UsersRequest {
   optional string name_part = 1;
-  optional uint32 offset = 2;
-  optional uint32 limit = 3;
+  optional uint32 limit = 2;
+  optional uint32 offset = 3;
 }
 
 message UsersReponse {

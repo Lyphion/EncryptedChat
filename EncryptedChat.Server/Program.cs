@@ -14,9 +14,10 @@ DefaultTypeMap.MatchNamesWithUnderscores = true;
 SqlMapper.AddTypeHandler(new GuidHandler());
 
 services.AddSingleton<IUserRepository, UserRepository>();
-services.AddSingleton<IChatRepository, ChatRepository>();
-
 services.AddSingleton<IUserUpdateNotificationHandler, UserUpdateNotificationHandler>();
+
+services.AddSingleton<IChatRepository, ChatRepository>();
+services.AddSingleton<IChatNotificationHandler, ChatNotificationHandler>();
 
 services.AddGrpc();
 

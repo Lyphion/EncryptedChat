@@ -3,7 +3,7 @@ using Dapper;
 
 namespace EncryptedChat.Server.Database;
 
-public class GuidHandler : SqlMapper.TypeHandler<Guid>
+public sealed class GuidHandler : SqlMapper.TypeHandler<Guid>
 {
     public override void SetValue(IDbDataParameter parameter, Guid value) => parameter.Value = value.ToByteArray();
 
