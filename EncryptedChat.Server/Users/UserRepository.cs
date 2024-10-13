@@ -1,5 +1,4 @@
-﻿using CSharpFunctionalExtensions;
-using Dapper;
+﻿using Dapper;
 using EncryptedChat.Server.Database;
 
 namespace EncryptedChat.Server.Users;
@@ -13,16 +12,32 @@ public sealed class UserRepository : IUserRepository
         _connectionFactory = connectionFactory;
     }
 
-    public async Task<IEnumerable<User>> GetUsersAsync(CancellationToken token = default)
+    public async Task<IEnumerable<User>> GetUsersAsync(string? namePart, uint limit = int.MaxValue, uint offset = 0, CancellationToken token = default)
     {
         using var connection = await _connectionFactory.CreateConnectionAsync(token).ConfigureAwait(false);
 
+        if (namePart is null)
+        {
+            return await connection.QueryAsync<User>(
+                """
+                SELECT * FROM users
+                LIMIT @limit OFFSET @offset;
+                """,
+                new { limit, offset }
+            ).ConfigureAwait(false);
+        }
+        
         return await connection.QueryAsync<User>(
-            "SELECT * FROM users;"
+            """
+            SELECT * FROM users
+            WHERE name LIKE @namePart ESCAPE '!'
+            LIMIT @limit OFFSET @offset;
+            """,
+            new { namePart = $"%{namePart.Replace("%", "!%")}%", limit, offset }
         ).ConfigureAwait(false);
     }
 
-    public async Task<Maybe<User>> GetUserAsync(Guid id, CancellationToken token = default)
+    public async Task<User?> GetUserAsync(Guid id, CancellationToken token = default)
     {
         using var connection = await _connectionFactory.CreateConnectionAsync(token).ConfigureAwait(false);
 
@@ -35,48 +50,32 @@ public sealed class UserRepository : IUserRepository
         ).ConfigureAwait(false);
     }
 
-    public async Task<bool> CreateUserAsync(User user, CancellationToken token = default)
+    public async Task<bool> CreateUserAsync(Guid id, string name, ReadOnlyMemory<byte> key, CancellationToken token = default)
     {
         using var connection = await _connectionFactory.CreateConnectionAsync(token).ConfigureAwait(false);
 
         int result = await connection.ExecuteAsync(
             """
             INSERT INTO users (id, name, public_key)
-            VALUES (@Id, @Name, @PublicKey);
+            VALUES (@id, @name, @key);
             """,
-            user
+            new { id, name, key }
         ).ConfigureAwait(false);
 
         return result > 0;
     }
 
-    public async Task<bool> UpdateNameAsync(Guid id, string name, CancellationToken token = default)
+    public async Task<bool> UpdateUserAsync(Guid id, string name, ReadOnlyMemory<byte> key, CancellationToken token = default)
     {
         using var connection = await _connectionFactory.CreateConnectionAsync(token).ConfigureAwait(false);
 
         int result = await connection.ExecuteAsync(
             """
             UPDATE users
-            SET name = @name
+            SET name = @name, public_key = @key
             WHERE id = @id;
             """,
-            new { id, name }
-        );
-
-        return result > 1;
-    }
-
-    public async Task<bool> UpdatePublicKeyAsync(Guid id, ReadOnlyMemory<byte> key, CancellationToken token = default)
-    {
-        using var connection = await _connectionFactory.CreateConnectionAsync(token).ConfigureAwait(false);
-
-        int result = await connection.ExecuteAsync(
-            """
-            UPDATE users
-            SET public_key = @key
-            WHERE id = @id;
-            """,
-            new { id, key }
+            new { id, name, key }
         ).ConfigureAwait(false);
 
         return result > 1;

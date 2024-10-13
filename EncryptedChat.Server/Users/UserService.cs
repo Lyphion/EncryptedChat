@@ -22,7 +22,7 @@ public sealed class UserService : Common.User.UserBase
     public override async Task<UsersReponse> GetUsers(UsersRequest request, ServerCallContext context)
     {
         var users = await _userRepository
-            .GetUsersAsync()
+            .GetUsersAsync(request.HasNamePart ? request.NamePart : null, request.HasLimit ? request.Limit : int.MaxValue, request.Offset)
             .ConfigureAwait(false);
 
         var usersReponse = new UsersReponse();
@@ -41,11 +41,11 @@ public sealed class UserService : Common.User.UserBase
         if (Guid.TryParse(request.Id, out var id))
             return new UserResponse();
 
-        var optionen = await _userRepository
+        var user = await _userRepository
             .GetUserAsync(id)
             .ConfigureAwait(false);
 
-        if (!optionen.TryGetValue(out var user))
+        if (user is null)
             return new UserResponse();
 
         return new UserResponse
@@ -56,19 +56,45 @@ public sealed class UserService : Common.User.UserBase
         };
     }
 
-    public override async Task<PublicKeyResponse> UpdatePublicKey(PublicKeyRequest request, ServerCallContext context)
+    public override async Task<UserUpdateResponse> UpdateUser(UserUpdateRequest request, ServerCallContext context)
     {
         string? idString = context.GetHttpContext().User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (Guid.TryParse(idString, out var id))
-            return new PublicKeyResponse { Success = false };
+            return new UserUpdateResponse { Success = false };
 
-        bool success = await _userRepository
-            .UpdatePublicKeyAsync(id, request.PublicKey.Memory)
+        bool success;
+        var user = await _userRepository.GetUserAsync(id).ConfigureAwait(false);
+        if (user is null)
+        {
+            if (request is { HasName: false, HasPublicKey: false })
+                return new UserUpdateResponse { Success = false };
+
+            success = await _userRepository
+                .CreateUserAsync(id, request.Name, request.PublicKey.Memory)
+                .ConfigureAwait(false);
+
+            if (success)
+                _logger.LogInformation("User '{Id}' create", id);
+            
+            // TODO Send user update
+
+            return new UserUpdateResponse { Success = success };
+        }
+
+        success = await _userRepository
+            .UpdateUserAsync(id, request.HasName ? request.Name : user.Name, request.HasPublicKey ? request.PublicKey.Memory : user.PublicKey)
             .ConfigureAwait(false);
 
         if (success)
-            _logger.LogInformation("Public key updated for '{Id}'", id);
+            _logger.LogInformation("User '{Id}' updated", id);
+        
+        // TODO Send user update
 
-        return new PublicKeyResponse { Success = success };
+        return new UserUpdateResponse { Success = success };
+    }
+
+    public override async Task ReceiveUserUpdates(UserReceiveRequest request, IServerStreamWriter<UserUpdateNotification> responseStream, ServerCallContext context)
+    {
+        // TODO Send messages
     }
 }

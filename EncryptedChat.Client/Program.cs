@@ -4,7 +4,7 @@ using Grpc.Core;
 using Grpc.Net.Client;
 using IdentityModel.Client;
 
-var credentials = CallCredentials.FromInterceptor(async (context, metadata) =>
+var credentials = CallCredentials.FromInterceptor(async (_, metadata) =>
 {
     using var client = new HttpClient();
     var token = await client.RequestPasswordTokenAsync(new PasswordTokenRequest
@@ -27,7 +27,10 @@ using var channel = GrpcChannel.ForAddress("https://localhost:7001", new GrpcCha
 var chatClient = new Chat.ChatClient(channel);
 var userClient = new User.UserClient(channel);
 
-var users = await userClient.GetUsersAsync(new UsersRequest()).ConfigureAwait(false);
+var users = await userClient.GetUsersAsync(new UsersRequest
+{
+    NamePart = "t"
+}).ConfigureAwait(false);
 
 var response = await chatClient.SendMessageAsync(new ChatMessageRequest
 {

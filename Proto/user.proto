@@ -4,13 +4,18 @@ option csharp_namespace = "EncryptedChat.Common";
 
 service User {
   rpc GetUsers(UsersRequest) returns (UsersReponse);
-  
+
   rpc GetUser(UserRequest) returns (UserResponse);
-  
-  rpc UpdatePublicKey(PublicKeyRequest) returns (PublicKeyResponse);
+
+  rpc UpdateUser(UserUpdateRequest) returns (UserUpdateResponse);
+
+  rpc ReceiveUserUpdates(UserReceiveRequest) returns (stream UserUpdateNotification);
 }
 
 message UsersRequest {
+  optional string name_part = 1;
+  optional uint32 offset = 2;
+  optional uint32 limit = 3;
 }
 
 message UsersReponse {
@@ -24,13 +29,26 @@ message UserRequest {
 message UserResponse {
   string id = 1;
   string name = 2;
-  bytes public_key = 4;
+  bytes public_key = 3;
 }
 
-message PublicKeyRequest {
-  bytes public_key = 4;
+message UserUpdateRequest {
+  optional string name = 1;
+  optional bytes public_key = 2;
 }
 
-message PublicKeyResponse {
+message UserUpdateResponse {
   bool success = 1;
+}
+
+message UserReceiveRequest {}
+
+message UserUpdateNotification {
+  string id = 1;
+  repeated UpdateType type = 2;
+  
+  enum UpdateType {
+    Name = 0;
+    PublicKey = 1;
+  }
 }

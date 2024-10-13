@@ -61,12 +61,14 @@ public sealed class ChatService : Chat.ChatBase
             .DeleteMessageAsync(userId, targetId, request.MessageId)
             .ConfigureAwait(false);
 
-        if (success)
-            _logger.LogDebug("Deleted message {MessageId} from '{UserId}' to '{TargetId}'", request.MessageId, userId, targetId);
+        if (!success) 
+            return new DeleteChatMessageResponse { Success = false };
+        
+        _logger.LogDebug("Deleted message {MessageId} between '{UserId}' and '{TargetId}'", request.MessageId, userId, targetId);
 
         // TODO Send to target if connected
 
-        return new DeleteChatMessageResponse { Success = success };
+        return new DeleteChatMessageResponse { Success = true };
     }
 
     public override async Task<ChatResponse> GetMessages(ChatRequest request, ServerCallContext context)

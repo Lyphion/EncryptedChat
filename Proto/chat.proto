@@ -47,9 +47,7 @@ message ChatResponse {
   repeated ChatNotification messages = 1;
 }
 
-message ChatReceiveRequest {
-  string target_id = 1;
-}
+message ChatReceiveRequest {}
 
 message ChatNotification {
   string sender_id = 1;
