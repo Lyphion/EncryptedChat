@@ -66,6 +66,8 @@ public sealed class UserService : Common.User.UserBase
             return new UserUpdateResponse { Success = false };
 
         bool success;
+        var notification = new UserUpdateNotification { Id = id.ToString() };
+
         var user = await _userRepository.GetUserAsync(id).ConfigureAwait(false);
         if (user is null)
         {
@@ -81,10 +83,8 @@ public sealed class UserService : Common.User.UserBase
 
             _logger.LogInformation("User '{Id}' create", id);
 
-            await _notificationHandler.PublishNotificationAsync(new UserUpdateNotification
-            {
-                Id = id.ToString()
-            }).ConfigureAwait(false);
+            notification.Type.Add(UserUpdateNotification.Types.UpdateType.Name);
+            notification.Type.Add(UserUpdateNotification.Types.UpdateType.PublicKey);
 
             return new UserUpdateResponse { Success = true };
         }
@@ -98,10 +98,12 @@ public sealed class UserService : Common.User.UserBase
 
         _logger.LogInformation("User '{Id}' updated", id);
 
-        await _notificationHandler.PublishNotificationAsync(new UserUpdateNotification
-        {
-            Id = id.ToString()
-        }).ConfigureAwait(false);
+        if (request.HasName)
+            notification.Type.Add(UserUpdateNotification.Types.UpdateType.Name);
+        if (request.HasPublicKey)
+            notification.Type.Add(UserUpdateNotification.Types.UpdateType.PublicKey);
+
+        await _notificationHandler.PublishNotificationAsync(notification).ConfigureAwait(false);
 
         return new UserUpdateResponse { Success = true };
     }

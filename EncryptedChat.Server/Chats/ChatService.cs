@@ -14,10 +14,13 @@ public sealed class ChatService : Chat.ChatBase
 
     private readonly IChatRepository _chatRepository;
 
-    public ChatService(ILogger<ChatService> logger, IChatRepository chatRepository)
+    private readonly IChatNotificationHandler _notificationHandler;
+
+    public ChatService(ILogger<ChatService> logger, IChatRepository chatRepository, IChatNotificationHandler notificationHandler)
     {
         _logger = logger;
         _chatRepository = chatRepository;
+        _notificationHandler = notificationHandler;
     }
 
     public override async Task<ChatMessageResponse> SendMessage(ChatMessageRequest request, ServerCallContext context)
@@ -29,12 +32,13 @@ public sealed class ChatService : Chat.ChatBase
         if (!Guid.TryParse(request.TargetId, out var receiverId))
             return new ChatMessageResponse { Success = false };
 
+        var now = DateTime.UtcNow;
         uint messageId = await _chatRepository.SaveMessageAsync(new ChatMessage
         {
             SenderId = senderId,
             ReceiverId = receiverId,
             EncryptedMessage = request.EncryptedMessage.ToByteArray(),
-            Timestamp = DateTime.UtcNow,
+            Timestamp = now,
             KeyVersion = request.KeyVersion,
         }).ConfigureAwait(false);
 
@@ -43,7 +47,16 @@ public sealed class ChatService : Chat.ChatBase
 
         _logger.LogDebug("Sent message from '{SenderId}' to '{ReceiverId}'", senderId, receiverId);
 
-        // TODO Send to target if connected
+        await _notificationHandler.PublishNotificationAsync(new ChatNotification
+        {
+            SenderId = senderId.ToString(),
+            ReceiverId = receiverId.ToString(),
+            MessageId = messageId,
+            EncryptedMessage = request.EncryptedMessage,
+            Timestamp = now.ToTimestamp(),
+            KeyVersion = request.KeyVersion,
+            Deleted = false
+        }).ConfigureAwait(false);
 
         return new ChatMessageResponse { Success = true };
     }
@@ -61,12 +74,24 @@ public sealed class ChatService : Chat.ChatBase
             .DeleteMessageAsync(userId, targetId, request.MessageId)
             .ConfigureAwait(false);
 
-        if (!success) 
+        if (!success)
             return new DeleteChatMessageResponse { Success = false };
-        
+
         _logger.LogDebug("Deleted message {MessageId} between '{UserId}' and '{TargetId}'", request.MessageId, userId, targetId);
 
-        // TODO Send to target if connected
+        var messages = await _chatRepository.GetMessagesAsync(userId, targetId, request.MessageId, request.MessageId).ConfigureAwait(false);
+        var message = messages.First();
+
+        await _notificationHandler.PublishNotificationAsync(new ChatNotification
+        {
+            SenderId = userId.ToString(),
+            ReceiverId = targetId.ToString(),
+            MessageId = request.MessageId,
+            EncryptedMessage = ByteString.Empty,
+            Timestamp = message.Timestamp.ToTimestamp(),
+            KeyVersion = message.KeyVersion,
+            Deleted = true
+        }).ConfigureAwait(false);
 
         return new DeleteChatMessageResponse { Success = true };
     }
@@ -103,9 +128,22 @@ public sealed class ChatService : Chat.ChatBase
 
     public override async Task ReceiveMessages(ChatReceiveRequest request, IServerStreamWriter<ChatNotification> responseStream, ServerCallContext context)
     {
-        while (!context.CancellationToken.IsCancellationRequested)
+        string? idString = context.GetHttpContext().User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (Guid.TryParse(idString, out var id))
+            return;
+
+        var reader = _notificationHandler.Register(id);
+
+        try
         {
-            
+            await foreach (var notification in reader.ReadAllAsync(context.CancellationToken).ConfigureAwait(false))
+            {
+                await responseStream.WriteAsync(notification).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            _notificationHandler.Unregister(id);
         }
     }
 
