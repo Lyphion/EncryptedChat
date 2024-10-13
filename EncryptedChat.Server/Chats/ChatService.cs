@@ -92,7 +92,7 @@ public sealed class ChatService : Chat.ChatBase
             SenderId = m.SenderId.ToString(),
             ReceiverId = m.ReceiverId.ToString(),
             MessageId = m.MessageId,
-            EncryptedMessage = ByteString.CopyFrom(m.EncryptedMessage),
+            EncryptedMessage = UnsafeByteOperations.UnsafeWrap(m.EncryptedMessage),
             Timestamp = m.Timestamp.ToTimestamp(),
             KeyVersion = m.KeyVersion,
             Deleted = m.Deleted
@@ -103,7 +103,10 @@ public sealed class ChatService : Chat.ChatBase
 
     public override async Task ReceiveMessages(ChatReceiveRequest request, IServerStreamWriter<ChatNotification> responseStream, ServerCallContext context)
     {
-        // TODO Send messages
+        while (!context.CancellationToken.IsCancellationRequested)
+        {
+            
+        }
     }
 
     public override async Task<CryptographicKeysReponse> GetCryptographicKeys(CryptographicKeysRequest request, ServerCallContext context)
@@ -124,7 +127,7 @@ public sealed class ChatService : Chat.ChatBase
         var response = new CryptographicKeysReponse();
         response.Keys.AddRange(keys.Select(k => new CryptographicKeysReponse.Types.CryptographicKey
         {
-            Key = ByteString.CopyFrom(k.EncryptedKey),
+            Key = UnsafeByteOperations.UnsafeWrap(k.EncryptedKey),
             Version = k.Version
         }));
 

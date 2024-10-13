@@ -1,4 +1,5 @@
 using Dapper;
+using EncryptedChat.Common;
 using EncryptedChat.Server.Chats;
 using EncryptedChat.Server.Database;
 using EncryptedChat.Server.Users;
@@ -14,6 +15,8 @@ SqlMapper.AddTypeHandler(new GuidHandler());
 
 services.AddSingleton<IUserRepository, UserRepository>();
 services.AddSingleton<IChatRepository, ChatRepository>();
+
+services.AddSingleton<IUserUpdateNotificationHandler, UserUpdateNotificationHandler>();
 
 services.AddGrpc();
 

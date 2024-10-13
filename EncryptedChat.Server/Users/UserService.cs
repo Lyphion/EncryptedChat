@@ -13,10 +13,13 @@ public sealed class UserService : Common.User.UserBase
 
     private readonly IUserRepository _userRepository;
 
-    public UserService(ILogger<UserService> logger, IUserRepository userRepository)
+    private readonly IUserUpdateNotificationHandler _notificationHandler;
+
+    public UserService(ILogger<UserService> logger, IUserRepository userRepository, IUserUpdateNotificationHandler notificationHandler)
     {
         _logger = logger;
         _userRepository = userRepository;
+        _notificationHandler = notificationHandler;
     }
 
     public override async Task<UsersReponse> GetUsers(UsersRequest request, ServerCallContext context)
@@ -30,7 +33,7 @@ public sealed class UserService : Common.User.UserBase
         {
             Id = u.Id.ToString(),
             Name = u.Name,
-            PublicKey = ByteString.CopyFrom(u.PublicKey)
+            PublicKey = UnsafeByteOperations.UnsafeWrap(u.PublicKey)
         }));
 
         return usersReponse;
@@ -52,7 +55,7 @@ public sealed class UserService : Common.User.UserBase
         {
             Id = user.Id.ToString(),
             Name = user.Name,
-            PublicKey = ByteString.CopyFrom(user.PublicKey)
+            PublicKey = UnsafeByteOperations.UnsafeWrap(user.PublicKey)
         };
     }
 
@@ -73,28 +76,54 @@ public sealed class UserService : Common.User.UserBase
                 .CreateUserAsync(id, request.Name, request.PublicKey.Memory)
                 .ConfigureAwait(false);
 
-            if (success)
-                _logger.LogInformation("User '{Id}' create", id);
-            
-            // TODO Send user update
+            if (!success)
+                return new UserUpdateResponse { Success = false };
 
-            return new UserUpdateResponse { Success = success };
+            _logger.LogInformation("User '{Id}' create", id);
+
+            await _notificationHandler.PublishNotificationAsync(new UserUpdateNotification
+            {
+                Id = id.ToString()
+            }).ConfigureAwait(false);
+
+            return new UserUpdateResponse { Success = true };
         }
 
         success = await _userRepository
             .UpdateUserAsync(id, request.HasName ? request.Name : user.Name, request.HasPublicKey ? request.PublicKey.Memory : user.PublicKey)
             .ConfigureAwait(false);
 
-        if (success)
-            _logger.LogInformation("User '{Id}' updated", id);
-        
-        // TODO Send user update
+        if (!success)
+            return new UserUpdateResponse { Success = false };
 
-        return new UserUpdateResponse { Success = success };
+        _logger.LogInformation("User '{Id}' updated", id);
+
+        await _notificationHandler.PublishNotificationAsync(new UserUpdateNotification
+        {
+            Id = id.ToString()
+        }).ConfigureAwait(false);
+
+        return new UserUpdateResponse { Success = true };
     }
 
     public override async Task ReceiveUserUpdates(UserReceiveRequest request, IServerStreamWriter<UserUpdateNotification> responseStream, ServerCallContext context)
     {
-        // TODO Send messages
+        string? idString = context.GetHttpContext().User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (Guid.TryParse(idString, out var id))
+            return;
+
+        var reader = _notificationHandler.Register(id);
+
+        try
+        {
+            await foreach (var notification in reader.ReadAllAsync(context.CancellationToken).ConfigureAwait(false))
+            {
+                await responseStream.WriteAsync(notification).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            _notificationHandler.Unregister(id);
+        }
     }
 }
