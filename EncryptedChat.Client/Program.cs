@@ -1,40 +1,36 @@
-﻿using EncryptedChat.Common;
-using Google.Protobuf;
-using Grpc.Core;
-using Grpc.Net.Client;
-using IdentityModel.Client;
+﻿using EncryptedChat.Client;
+using EncryptedChat.Client.Authentication;
+using EncryptedChat.Client.Services;
+using EncryptedChat.Common;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
-var credentials = CallCredentials.FromInterceptor(async (_, metadata) =>
-{
-    using var client = new HttpClient();
-    var token = await client.RequestPasswordTokenAsync(new PasswordTokenRequest
+var builder = Host.CreateApplicationBuilder(args);
+var config = builder.Configuration;
+var services = builder.Services;
+
+services.AddSingleton<ITokenProvider, TokenProvider>();
+services.Configure<TokenOptions>(config.GetSection("Authentication"));
+services.AddHttpClient(TokenProvider.ClientName);
+
+services.AddHostedService<CommunicationService>();
+
+services.AddGrpcClient<Chat.ChatClient>(options => { options.Address = new Uri(config["Server:Uri"]!); })
+    .AddCallCredentials(async (context, metadata, serviceProvider) =>
     {
-        Address = "http://127.0.0.1:8080/realms/chat/protocol/openid-connect/token",
-        ClientId = "chat-client",
-        UserName = "test",
-        Password = "test",
-        Scope = "chat"
-    }).ConfigureAwait(false);
+        var provider = serviceProvider.GetRequiredService<ITokenProvider>();
+        string token = await provider.GetTokenAsync(context.CancellationToken);
+        metadata.Add("Authorization", $"Bearer {token}");
+    });
 
-    metadata.Add("Authorization", $"Bearer {token.AccessToken}");
-});
+services.AddGrpcClient<User.UserClient>(options => { options.Address = new Uri(config["Server:Uri"]!); })
+    .AddCallCredentials(async (context, metadata, serviceProvider) =>
+    {
+        var provider = serviceProvider.GetRequiredService<ITokenProvider>();
+        string token = await provider.GetTokenAsync(context.CancellationToken);
+        metadata.Add("Authorization", $"Bearer {token}");
+    });
 
-using var channel = GrpcChannel.ForAddress("https://localhost:7001", new GrpcChannelOptions
-{
-    Credentials = ChannelCredentials.Create(new SslCredentials(), credentials),
-});
+var app = builder.Build();
 
-var chatClient = new Chat.ChatClient(channel);
-var userClient = new User.UserClient(channel);
-
-var users = await userClient.GetUsersAsync(new UsersRequest
-{
-    NamePart = "t"
-}).ConfigureAwait(false);
-
-var response = await chatClient.SendMessageAsync(new ChatMessageRequest
-{
-    TargetId = Guid.NewGuid().ToString(),
-    EncryptedMessage = ByteString.CopyFromUtf8("Hello World"),
-    KeyVersion = 1
-}).ConfigureAwait(false);
+app.Run();
