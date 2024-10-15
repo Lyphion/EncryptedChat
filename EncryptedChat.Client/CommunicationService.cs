@@ -1,4 +1,5 @@
 ﻿using EncryptedChat.Common;
+using Google.Protobuf;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -20,7 +21,11 @@ public sealed class CommunicationService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken token)
     {
-        var users = await _userClient.GetUsersAsync(new UsersRequest(), cancellationToken: token).ConfigureAwait(false);
-        
+        var response = await _chatClient.SendMessageAsync(new ChatMessageRequest
+        {
+            TargetId = Guid.NewGuid().ToString(),
+            EncryptedMessage = ByteString.Empty,
+            KeyVersion = 1
+        }, cancellationToken: token).ConfigureAwait(false);
     }
 }
