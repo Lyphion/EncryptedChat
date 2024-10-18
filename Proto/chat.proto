@@ -71,13 +71,16 @@ message CryptographicKeysReponse {
   message CryptographicKey {
     bytes key = 1;
     uint32 version = 2;
+    uint32 public_key_version = 3;
   }
 }
 
 message CryptographicKeysUpdateRequest {
   string target_id = 1;
   bytes own_encrypted_key = 2;
-  bytes target_encrypted_key = 3;
+  uint32 own_public_key_version = 3;
+  bytes target_encrypted_key = 4;
+  uint32 target_public_key_version = 5;
 }
 
 message CryptographicKeysUpdateResponse {

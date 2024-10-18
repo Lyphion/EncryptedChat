@@ -6,7 +6,7 @@ public interface IUserRepository
 
     Task<User?> GetUserAsync(Guid id, CancellationToken token = default);
 
-    Task<bool> CreateUserAsync(Guid id, string name, ReadOnlyMemory<byte> key, CancellationToken token = default);
+    Task<uint> CreateUserAsync(Guid id, string name, ReadOnlyMemory<byte> key, CancellationToken token = default);
 
-    Task<bool> UpdateUserAsync(Guid id, string name, ReadOnlyMemory<byte> key, CancellationToken token = default);
+    Task<uint> UpdateUserAsync(Guid id, string name, ReadOnlyMemory<byte> key, CancellationToken token = default);
 }

@@ -13,5 +13,5 @@ public interface IChatRepository
         Guid userId, Guid targetId, uint mimimumVersionId = 0, uint maximumVersionId = int.MaxValue, CancellationToken token = default);
 
     Task<uint> UpdateCryptographicKeysAsync(
-        Guid userId, Guid targetId, ReadOnlyMemory<byte> ownEncryptedKey, ReadOnlyMemory<byte> targetEncryptedKey, CancellationToken token = default);
+        Guid userId, Guid targetId, ReadOnlyMemory<byte> ownEncryptedKey, uint ownVersion, ReadOnlyMemory<byte> targetEncryptedKey, uint targetVersion, CancellationToken token = default);
 }

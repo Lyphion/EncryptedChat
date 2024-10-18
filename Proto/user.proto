@@ -30,6 +30,7 @@ message UserResponse {
   string id = 1;
   string name = 2;
   bytes public_key = 3;
+  uint32 public_key_version = 4;
 }
 
 message UserUpdateRequest {
@@ -39,6 +40,7 @@ message UserUpdateRequest {
 
 message UserUpdateResponse {
   bool success = 1;
+  optional uint32 public_key_version = 2;
 }
 
 message UserReceiveRequest {}

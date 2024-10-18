@@ -1,24 +1,26 @@
 create table users
 (
-    id         BLOB not null
+    id                 BLOB not null
         constraint users_pk
             primary key,
-    name       TEXT not null,
-    public_key BLOB not null
+    name               TEXT not null,
+    public_key         BLOB not null,
+    public_key_version INT  not null
 );
 
 create table keys
 (
-    user_id       BLOB not null
+    user_id            BLOB not null
         constraint keys_users_id_fk_user
             references users
             on update cascade on delete cascade,
-    target_id     BLOB not null
+    target_id          BLOB not null
         constraint keys_users_id_fk_target
             references users
             on update cascade on delete cascade,
-    encrypted_key BLOB not null,
-    version       INT  not null,
+    encrypted_key      BLOB not null,
+    version            INT  not null,
+    public_key_version INT  not null,
     constraint keys_pk
         primary key (user_id, target_id, version)
 );

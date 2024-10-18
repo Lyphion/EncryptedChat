@@ -7,4 +7,6 @@ public sealed class User
     public required string Name { get; set; }
 
     public required byte[] PublicKey { get; set; }
+
+    public required uint PublicKeyVersion { get; set; }
 }

@@ -70,50 +70,61 @@ public sealed class UserRepository : IUserRepository
         }
     }
 
-    public async Task<bool> CreateUserAsync(Guid id, string name, ReadOnlyMemory<byte> key, CancellationToken token = default)
+    public async Task<uint> CreateUserAsync(Guid id, string name, ReadOnlyMemory<byte> key, CancellationToken token = default)
     {
         try
         {
             using var connection = await _connectionFactory.CreateConnectionAsync(token).ConfigureAwait(false);
-
+            const uint version = 1;
+            
             int result = await connection.ExecuteAsync(
                 """
-                INSERT INTO users (id, name, public_key)
-                VALUES (@id, @name, @key);
+                INSERT INTO users (id, name, public_key, public_key_version)
+                VALUES (@id, @name, @key, @version);
                 """,
-                new { id, name, key }
+                new { id, name, key, version }
             ).ConfigureAwait(false);
 
-            return result > 0;
+            return result > 0 ? version : 0;
         }
         catch (DbException ex)
         {
             _logger.LogError(ex, "Failed to create user '{Id}'", id);
-            return false;
+            return 0;
         }
     }
 
-    public async Task<bool> UpdateUserAsync(Guid id, string name, ReadOnlyMemory<byte> key, CancellationToken token = default)
+    public async Task<uint> UpdateUserAsync(Guid id, string name, ReadOnlyMemory<byte> key, CancellationToken token = default)
     {
         try
         {
             using var connection = await _connectionFactory.CreateConnectionAsync(token).ConfigureAwait(false);
 
+            var old = await connection.QueryFirstOrDefaultAsync<(byte[], uint)>(
+                """
+                SELECT public_key, public_key_version FROM users
+                WHERE id = @id LIMIT 1;
+                """,
+                new { id }
+            ).ConfigureAwait(false);
+
+            uint version = key.Span.SequenceEqual(old.Item1) ? old.Item2 : old.Item2 + 1;
+
             int result = await connection.ExecuteAsync(
                 """
                 UPDATE users
-                SET name = @name, public_key = @key
+                SET name = @name, public_key = @key, public_key_version = @version
                 WHERE id = @id;
                 """,
-                new { id, name, key }
+                new { id, name, key, version }
             ).ConfigureAwait(false);
 
-            return result > 1;
+            return result > 1 ? version : 0;
         }
         catch (DbException ex)
         {
             _logger.LogError(ex, "Failed to update user '{Id}'", id);
-            return false;
+            return 0;
         }
     }
 }

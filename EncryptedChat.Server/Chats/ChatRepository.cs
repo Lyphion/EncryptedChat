@@ -56,7 +56,6 @@ public sealed class ChatRepository : IChatRepository
 
             int result = await connection.ExecuteAsync(
                 """
-                PRAGMA foreign_keys = ON;
                 UPDATE messages
                 SET deleted = 1, encrypted_message = ''
                 WHERE sender_id = @senderId AND receiver_id = @receiverId AND message_id = @messageId;
@@ -118,8 +117,7 @@ public sealed class ChatRepository : IChatRepository
         }
     }
 
-    public async Task<uint> UpdateCryptographicKeysAsync(
-        Guid userId, Guid targetId, ReadOnlyMemory<byte> ownEncryptedKey, ReadOnlyMemory<byte> targetEncryptedKey, CancellationToken token = default)
+    public async Task<uint> UpdateCryptographicKeysAsync(Guid userId, Guid targetId, ReadOnlyMemory<byte> ownEncryptedKey, uint ownVersion, ReadOnlyMemory<byte> targetEncryptedKey, uint targetVersion, CancellationToken token = default)
     {
         try
         {
@@ -136,10 +134,10 @@ public sealed class ChatRepository : IChatRepository
             int result = await connection.ExecuteAsync(
                 """
                 PRAGMA foreign_keys = ON;
-                INSERT INTO keys (user_id, target_id, encrypted_key, version)
-                VALUES (@userId, @targetId, @ownEncryptedKey, @version), (@targetId, @userId, @targetEncryptedKey, @version);
+                INSERT INTO keys (user_id, target_id, encrypted_key, version, public_key_version)
+                VALUES (@userId, @targetId, @ownEncryptedKey, @version, @ownVersion), (@targetId, @userId, @targetEncryptedKey, @version, @targetVersion);
                 """,
-                new { userId, targetId, ownEncryptedKey, targetEncryptedKey, version }
+                new { userId, targetId, ownEncryptedKey, targetEncryptedKey, version, ownVersion, targetVersion }
             ).ConfigureAwait(false);
 
             return result > 1 ? version : 0;

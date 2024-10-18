@@ -9,4 +9,6 @@ public sealed class CryptographicKey
     public required byte[] EncryptedKey { get; init; }
 
     public required uint Version { get; init; }
+
+    public required uint PublicKeyVersion { get; init; }
 }

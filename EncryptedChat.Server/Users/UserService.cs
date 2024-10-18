@@ -33,7 +33,8 @@ public sealed class UserService : Common.User.UserBase
         {
             Id = u.Id.ToString(),
             Name = u.Name,
-            PublicKey = UnsafeByteOperations.UnsafeWrap(u.PublicKey)
+            PublicKey = UnsafeByteOperations.UnsafeWrap(u.PublicKey),
+            PublicKeyVersion = u.PublicKeyVersion
         }));
 
         return usersReponse;
@@ -55,7 +56,8 @@ public sealed class UserService : Common.User.UserBase
         {
             Id = user.Id.ToString(),
             Name = user.Name,
-            PublicKey = UnsafeByteOperations.UnsafeWrap(user.PublicKey)
+            PublicKey = UnsafeByteOperations.UnsafeWrap(user.PublicKey),
+            PublicKeyVersion = user.PublicKeyVersion
         };
     }
 
@@ -65,7 +67,7 @@ public sealed class UserService : Common.User.UserBase
         if (Guid.TryParse(idString, out var id))
             return new UserUpdateResponse { Success = false };
 
-        bool success;
+        uint keyVersion;
         var notification = new UserUpdateNotification { Id = id.ToString() };
 
         var user = await _userRepository.GetUserAsync(id).ConfigureAwait(false);
@@ -74,11 +76,11 @@ public sealed class UserService : Common.User.UserBase
             if (request is { HasName: false, HasPublicKey: false })
                 return new UserUpdateResponse { Success = false };
 
-            success = await _userRepository
+            keyVersion = await _userRepository
                 .CreateUserAsync(id, request.Name, request.PublicKey.Memory)
                 .ConfigureAwait(false);
 
-            if (!success)
+            if (keyVersion == 0)
                 return new UserUpdateResponse { Success = false };
 
             _logger.LogInformation("User '{Id}' create", id);
@@ -86,14 +88,14 @@ public sealed class UserService : Common.User.UserBase
             notification.Type.Add(UserUpdateNotification.Types.UpdateType.Name);
             notification.Type.Add(UserUpdateNotification.Types.UpdateType.PublicKey);
 
-            return new UserUpdateResponse { Success = true };
+            return new UserUpdateResponse { Success = true, PublicKeyVersion = keyVersion };
         }
 
-        success = await _userRepository
+        keyVersion = await _userRepository
             .UpdateUserAsync(id, request.HasName ? request.Name : user.Name, request.HasPublicKey ? request.PublicKey.Memory : user.PublicKey)
             .ConfigureAwait(false);
 
-        if (!success)
+        if (keyVersion == 0)
             return new UserUpdateResponse { Success = false };
 
         _logger.LogInformation("User '{Id}' updated", id);
@@ -105,7 +107,7 @@ public sealed class UserService : Common.User.UserBase
 
         await _notificationHandler.PublishNotificationAsync(notification).ConfigureAwait(false);
 
-        return new UserUpdateResponse { Success = true };
+        return new UserUpdateResponse { Success = true, PublicKeyVersion = keyVersion };
     }
 
     public override async Task ReceiveUserUpdates(UserReceiveRequest request, IServerStreamWriter<UserUpdateNotification> responseStream, ServerCallContext context)

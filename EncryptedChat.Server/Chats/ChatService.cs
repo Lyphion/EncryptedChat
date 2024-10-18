@@ -166,7 +166,8 @@ public sealed class ChatService : Chat.ChatBase
         response.Keys.AddRange(keys.Select(k => new CryptographicKeysReponse.Types.CryptographicKey
         {
             Key = UnsafeByteOperations.UnsafeWrap(k.EncryptedKey),
-            Version = k.Version
+            Version = k.Version,
+            PublicKeyVersion = k.PublicKeyVersion
         }));
 
         return response;
@@ -182,7 +183,7 @@ public sealed class ChatService : Chat.ChatBase
             return new CryptographicKeysUpdateResponse { Success = false };
 
         uint version = await _chatRepository
-            .UpdateCryptographicKeysAsync(userId, targetId, request.OwnEncryptedKey.Memory, request.TargetEncryptedKey.Memory)
+            .UpdateCryptographicKeysAsync(userId, targetId, request.OwnEncryptedKey.Memory, request.OwnPublicKeyVersion, request.TargetEncryptedKey.Memory, request.TargetPublicKeyVersion)
             .ConfigureAwait(false);
 
         if (version > 0)
