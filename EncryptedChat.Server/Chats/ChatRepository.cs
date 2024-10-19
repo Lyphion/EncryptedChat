@@ -95,6 +95,32 @@ public sealed class ChatRepository : IChatRepository
         }
     }
 
+    public async Task<IEnumerable<ChatMessage>> GetChatOverviewAsync(Guid userId, CancellationToken token = default)
+    {
+        try
+        {
+            using var connection = await _connectionFactory.CreateConnectionAsync(token).ConfigureAwait(false);
+
+            return await connection.QueryAsync<ChatMessage>(
+                """
+                SELECT a.* FROM messages a
+                INNER JOIN (
+                    SELECT sender_id, receiver_id, max(message_id) message_id
+                    FROM messages
+                    WHERE sender_id = @userId OR receiver_id = @userId
+                    GROUP BY CASE WHEN sender_id = @userId THEN receiver_id ELSE sender_id END
+                ) b ON a.sender_id = b.sender_id AND a.receiver_id = b.receiver_id AND a.message_id = b.message_id
+                """,
+                new { userId }
+            ).ConfigureAwait(false);
+        }
+        catch (DbException ex)
+        {
+            _logger.LogError(ex, "Failed to get chats from '{UserId}'", userId);
+            return Array.Empty<ChatMessage>();
+        }
+    }
+
     public async Task<IEnumerable<CryptographicKey>> GetCryptographicKeysAsync(
         Guid userId, Guid targetId, uint mimimumVersionId = uint.MinValue, uint maximumVersionId = int.MaxValue, CancellationToken token = default)
     {

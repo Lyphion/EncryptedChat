@@ -10,6 +10,8 @@ service Chat {
   rpc DeleteMessage(DeleteChatMessageRequest) returns (DeleteChatMessageResponse);
 
   rpc GetMessages(ChatRequest) returns (ChatResponse);
+  
+  rpc GetChatOverview(ChatOverviewRequest) returns (ChatOverviewResponse);
 
   rpc ReceiveMessages(ChatReceiveRequest) returns (stream ChatNotification);
 
@@ -44,6 +46,12 @@ message ChatRequest {
 }
 
 message ChatResponse {
+  repeated ChatNotification messages = 1;
+}
+
+message ChatOverviewRequest {}
+
+message ChatOverviewResponse {
   repeated ChatNotification messages = 1;
 }
 

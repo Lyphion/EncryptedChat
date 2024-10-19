@@ -8,6 +8,9 @@ public interface IChatRepository
 
     Task<IEnumerable<ChatMessage>> GetMessagesAsync(
         Guid userId, Guid targetId, uint mimimumMessageId = 0, uint maximumMessageId = int.MaxValue, CancellationToken token = default);
+    
+    Task<IEnumerable<ChatMessage>> GetChatOverviewAsync(
+        Guid userId, CancellationToken token = default);
 
     Task<IEnumerable<CryptographicKey>> GetCryptographicKeysAsync(
         Guid userId, Guid targetId, uint mimimumVersionId = 0, uint maximumVersionId = int.MaxValue, CancellationToken token = default);

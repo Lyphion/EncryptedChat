@@ -126,6 +126,31 @@ public sealed class ChatService : Chat.ChatBase
         return chat;
     }
 
+    public override async Task<ChatOverviewResponse> GetChatOverview(ChatOverviewRequest request, ServerCallContext context)
+    {
+        string? idString = context.GetHttpContext().User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (Guid.TryParse(idString, out var id))
+            return new ChatOverviewResponse();
+
+        var messages = await _chatRepository
+            .GetChatOverviewAsync(id)
+            .ConfigureAwait(false);
+        
+        var chats = new ChatOverviewResponse();
+        chats.Messages.AddRange(messages.Select(m => new ChatNotification
+        {
+            SenderId = m.SenderId.ToString(),
+            ReceiverId = m.ReceiverId.ToString(),
+            MessageId = m.MessageId,
+            EncryptedMessage = UnsafeByteOperations.UnsafeWrap(m.EncryptedMessage),
+            Timestamp = m.Timestamp.ToTimestamp(),
+            KeyVersion = m.KeyVersion,
+            Deleted = m.Deleted
+        }));
+
+        return chats;
+    }
+
     public override async Task ReceiveMessages(ChatReceiveRequest request, IServerStreamWriter<ChatNotification> responseStream, ServerCallContext context)
     {
         string? idString = context.GetHttpContext().User.FindFirstValue(ClaimTypes.NameIdentifier);
