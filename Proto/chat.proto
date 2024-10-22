@@ -22,8 +22,9 @@ service Chat {
 
 message ChatMessageRequest {
   string target_id = 1;
-  bytes encrypted_message = 2;
-  uint32 key_version = 3;
+  bytes encrypted_content_type = 2;
+  bytes encrypted_message = 3;
+  uint32 key_version = 4;
 }
 
 message ChatMessageResponse {
@@ -61,10 +62,11 @@ message ChatNotification {
   string sender_id = 1;
   string receiver_id = 2;
   uint32 message_id = 3;
-  bytes encrypted_message = 4;
-  google.protobuf.Timestamp timestamp = 5;
-  uint32 key_version = 6;
-  bool deleted = 7;
+  bytes encrypted_content_type = 4;
+  bytes encrypted_message = 5;
+  google.protobuf.Timestamp timestamp = 6;
+  uint32 key_version = 7;
+  bool deleted = 8;
 }
 
 message CryptographicKeysRequest {

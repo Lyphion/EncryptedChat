@@ -8,6 +8,8 @@ public sealed class ChatMessage
 
     public uint MessageId { get; init; }
 
+    public required byte[] EncryptedContentType { get; init; }
+    
     public required byte[] EncryptedMessage { get; set; }
 
     public required DateTime Timestamp { get; init; }

@@ -33,10 +33,10 @@ public sealed class ChatRepository : IChatRepository
             int result = await connection.ExecuteAsync(
                 """
                 PRAGMA foreign_keys = ON;
-                INSERT INTO messages (sender_id, receiver_id, message_id, encrypted_message, timestamp, key_version, deleted)
-                VALUES (@SenderId, @ReceiverId, @MessageId, @EncryptedMessage, @Timestamp, @KeyVersion, @Deleted);
+                INSERT INTO messages (sender_id, receiver_id, message_id, encrypted_content_type, encrypted_message, timestamp, key_version, deleted)
+                VALUES (@SenderId, @ReceiverId, @MessageId, @EncryptedContentType, @EncryptedMessage, @Timestamp, @KeyVersion, @Deleted);
                 """,
-                new { message.SenderId, message.ReceiverId, MessageId = messageId, message.EncryptedMessage, message.Timestamp, message.KeyVersion, message.Deleted }
+                new { message.SenderId, message.ReceiverId, MessageId = messageId, message.EncryptedContentType, message.EncryptedMessage, message.Timestamp, message.KeyVersion, message.Deleted }
             ).ConfigureAwait(false);
 
             return result > 0 ? messageId : 0;
@@ -109,7 +109,7 @@ public sealed class ChatRepository : IChatRepository
                     FROM messages
                     WHERE sender_id = @userId OR receiver_id = @userId
                     GROUP BY CASE WHEN sender_id = @userId THEN receiver_id ELSE sender_id END
-                ) b ON a.sender_id = b.sender_id AND a.receiver_id = b.receiver_id AND a.message_id = b.message_id
+                ) b ON a.sender_id = b.sender_id AND a.receiver_id = b.receiver_id AND a.message_id = b.message_id;
                 """,
                 new { userId }
             ).ConfigureAwait(false);

@@ -27,21 +27,20 @@ create table keys
 
 create table messages
 (
-    sender_id         BLOB not null
+    sender_id              BLOB not null
         constraint messages_users_id_fk_sender
             references users
             on update cascade on delete cascade,
-    receiver_id       BLOB not null
+    receiver_id            BLOB not null
         constraint messages_users_id_fk_receiver
             references users
             on update cascade on delete cascade,
-    message_id        INT  not null,
-    encrypted_message BLOB not null,
-    timestamp         TEXT not null,
-    key_version       INT  not null,
-    deleted           INT  not null,
+    message_id             INT  not null,
+    encrypted_content_type BLOB not null,
+    encrypted_message      BLOB not null,
+    timestamp              TEXT not null,
+    key_version            INT  not null,
+    deleted                INT  not null,
     constraint messages_pk
         primary key (sender_id, receiver_id, message_id)
 );
-
-
