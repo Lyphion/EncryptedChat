@@ -1,5 +1,4 @@
 using Dapper;
-using EncryptedChat.Common;
 using EncryptedChat.Server.Chats;
 using EncryptedChat.Server.Database;
 using EncryptedChat.Server.Users;
@@ -27,11 +26,12 @@ services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 #if DEBUG
         options.RequireHttpsMetadata = false;
 #endif
-        
+
         options.Authority = config["Authentication:Issuer"];
         options.Audience = config["Authentication:Audience"];
 
         options.TokenValidationParameters.ClockSkew = TimeSpan.FromSeconds(5);
+        options.TokenValidationParameters.ValidateIssuerSigningKey = true;
     });
 
 services.AddAuthorization();

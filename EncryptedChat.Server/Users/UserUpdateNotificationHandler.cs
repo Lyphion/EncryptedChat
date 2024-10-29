@@ -4,11 +4,18 @@ using EncryptedChat.Common;
 
 namespace EncryptedChat.Server.Users;
 
+/// <summary>
+///     Handler to manage connected client for updates on user properties.
+/// </summary>
 public sealed class UserUpdateNotificationHandler : IUserUpdateNotificationHandler, IDisposable
 {
+    /// <summary>
+    ///     Collection of channels for the connected clients.
+    /// </summary>
     private readonly ConcurrentDictionary<Guid, ChannelWriter<UserUpdateNotification>> _notifications = new();
 
-    public ChannelReader<UserUpdateNotification> Register(Guid userId)
+    /// <inheritdoc />
+    public ChannelReader<UserUpdateNotification> Register(Guid clientId, Guid userId)
     {
         var channel = Channel.CreateUnbounded<UserUpdateNotification>(new UnboundedChannelOptions
         {
@@ -16,19 +23,21 @@ public sealed class UserUpdateNotificationHandler : IUserUpdateNotificationHandl
             SingleWriter = false
         });
 
-        _notifications[userId] = channel.Writer;
+        _notifications[clientId] = channel.Writer;
         return channel.Reader;
     }
 
-    public bool Unregister(Guid userId)
+    /// <inheritdoc />
+    public bool Unregister(Guid clientId)
     {
-        if (!_notifications.TryRemove(userId, out var writer))
+        if (!_notifications.TryRemove(clientId, out var writer))
             return false;
 
         writer.Complete();
         return true;
     }
 
+    /// <inheritdoc />
     public async Task PublishNotificationAsync(UserUpdateNotification notification, CancellationToken token = default)
     {
         foreach (var writer in _notifications.Values)
@@ -37,6 +46,7 @@ public sealed class UserUpdateNotificationHandler : IUserUpdateNotificationHandl
         }
     }
 
+    /// <inheritdoc />
     public void Dispose()
     {
         foreach (var writer in _notifications.Values)

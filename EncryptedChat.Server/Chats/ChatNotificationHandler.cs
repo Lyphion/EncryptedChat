@@ -4,11 +4,18 @@ using EncryptedChat.Common;
 
 namespace EncryptedChat.Server.Chats;
 
+/// <summary>
+///     Handler to manage connected client for notications for chats.
+/// </summary>
 public sealed class ChatNotificationHandler : IChatNotificationHandler, IDisposable
 {
-    private readonly ConcurrentDictionary<string, ChannelWriter<ChatNotification>> _notifications = new();
+    /// <summary>
+    ///     Collection of channels for the connected clients.
+    /// </summary>
+    private readonly ConcurrentDictionary<Guid, (Guid, ChannelWriter<ChatNotification>)> _notifications = new();
 
-    public ChannelReader<ChatNotification> Register(Guid userId)
+    /// <inheritdoc />
+    public ChannelReader<ChatNotification> Register(Guid clientId, Guid userId)
     {
         var channel = Channel.CreateUnbounded<ChatNotification>(new UnboundedChannelOptions
         {
@@ -16,30 +23,35 @@ public sealed class ChatNotificationHandler : IChatNotificationHandler, IDisposa
             SingleWriter = false
         });
 
-        _notifications[userId.ToString()] = channel.Writer;
+        _notifications[clientId] = (userId, channel.Writer);
         return channel.Reader;
     }
 
-    public bool Unregister(Guid userId)
+    /// <inheritdoc />
+    public bool Unregister(Guid clientId)
     {
-        if (!_notifications.TryRemove(userId.ToString(), out var writer))
+        if (!_notifications.TryRemove(clientId, out var writer))
             return false;
 
-        writer.Complete();
+        writer.Item2.Complete();
         return true;
     }
 
+    /// <inheritdoc />
     public async Task PublishNotificationAsync(ChatNotification notification, CancellationToken token = default)
     {
-        if (_notifications.TryGetValue(notification.SenderId, out var writer))
-            await writer.WriteAsync(notification, token).ConfigureAwait(false);
-        if (_notifications.TryGetValue(notification.ReceiverId, out writer))
-            await writer.WriteAsync(notification, token).ConfigureAwait(false);
+        foreach (var (id, writer) in _notifications.Values)
+        {
+            string targetId = id.ToString();
+            if (targetId.Equals(notification.SenderId) || targetId.Equals(notification.ReceiverId))
+                await writer.WriteAsync(notification, token).ConfigureAwait(false);
+        }
     }
 
+    /// <inheritdoc />
     public void Dispose()
     {
-        foreach (var writer in _notifications.Values)
+        foreach (var (_, writer) in _notifications.Values)
         {
             writer.Complete();
         }

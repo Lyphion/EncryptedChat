@@ -4,24 +4,40 @@ using EncryptedChat.Server.Database;
 
 namespace EncryptedChat.Server.Chats;
 
+/// <summary>
+///     Repository the save and receive chat message.
+/// </summary>
 public sealed class ChatRepository : IChatRepository
 {
+    /// <summary>
+    ///     Logger for this repository.
+    /// </summary>
     private readonly ILogger<ChatRepository> _logger;
 
+    /// <summary>
+    ///     Factory to create database connection.
+    /// </summary>
     private readonly IDbConnectionFactory _connectionFactory;
 
+    /// <summary>
+    ///     Create a new <see cref="ChatRepository"/> to manage users.
+    /// </summary>
+    /// <param name="logger">Logger for this repository.</param>
+    /// <param name="connectionFactory">Factory to create database connection.</param>
     public ChatRepository(ILogger<ChatRepository> logger, IDbConnectionFactory connectionFactory)
     {
         _logger = logger;
         _connectionFactory = connectionFactory;
     }
 
+    /// <inheritdoc />
     public async Task<uint> SaveMessageAsync(ChatMessage message, CancellationToken token = default)
     {
         try
         {
             using var connection = await _connectionFactory.CreateConnectionAsync(token).ConfigureAwait(false);
 
+            // Get next message id
             uint messageId = await connection.QueryFirstOrDefaultAsync<uint>(
                 """
                 SELECT coalesce(max(message_id), 0) FROM messages
@@ -48,6 +64,7 @@ public sealed class ChatRepository : IChatRepository
         }
     }
 
+    /// <inheritdoc />
     public async Task<bool> DeleteMessageAsync(Guid senderId, Guid receiverId, uint messageId, CancellationToken token = default)
     {
         try
@@ -72,6 +89,7 @@ public sealed class ChatRepository : IChatRepository
         }
     }
 
+    /// <inheritdoc />
     public async Task<IEnumerable<ChatMessage>> GetMessagesAsync(
         Guid userId, Guid targetId, uint mimimumMessageId = uint.MinValue, uint maximumMessageId = int.MaxValue, CancellationToken token = default)
     {
@@ -95,6 +113,7 @@ public sealed class ChatRepository : IChatRepository
         }
     }
 
+    /// <inheritdoc />
     public async Task<IEnumerable<ChatMessage>> GetChatOverviewAsync(Guid userId, CancellationToken token = default)
     {
         try
@@ -121,6 +140,7 @@ public sealed class ChatRepository : IChatRepository
         }
     }
 
+    /// <inheritdoc />
     public async Task<IEnumerable<CryptographicKey>> GetCryptographicKeysAsync(
         Guid userId, Guid targetId, uint mimimumVersionId = uint.MinValue, uint maximumVersionId = int.MaxValue, CancellationToken token = default)
     {
@@ -143,12 +163,14 @@ public sealed class ChatRepository : IChatRepository
         }
     }
 
+    /// <inheritdoc />
     public async Task<uint> UpdateCryptographicKeysAsync(Guid userId, Guid targetId, ReadOnlyMemory<byte> ownEncryptedKey, uint ownVersion, ReadOnlyMemory<byte> targetEncryptedKey, uint targetVersion, CancellationToken token = default)
     {
         try
         {
             using var connection = await _connectionFactory.CreateConnectionAsync(token).ConfigureAwait(false);
 
+            // Get next version of the shared key
             uint version = await connection.QueryFirstOrDefaultAsync<uint>(
                 """
                 SELECT coalesce(max(version), 0) FROM keys
