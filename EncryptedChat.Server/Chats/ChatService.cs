@@ -230,7 +230,7 @@ public sealed class ChatService : Chat.ChatBase
 
         // Create new cliend id
         var id = Guid.NewGuid();
-        var reader = _notificationHandler.Register(id, userId);
+        var reader = await _notificationHandler.RegisterAsync(id, userId, context.CancellationToken).ConfigureAwait(false);
 
         try
         {
@@ -245,7 +245,7 @@ public sealed class ChatService : Chat.ChatBase
         finally
         {
             // Remove client from handler
-            _notificationHandler.Unregister(id);
+            await _notificationHandler.UnregisterAsync(id).ConfigureAwait(false);
         }
     }
 

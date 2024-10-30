@@ -13,15 +13,17 @@ public interface IChatNotificationHandler
     /// </summary>
     /// <param name="clientId">Unique id of the client.</param>
     /// <param name="userId">Id of the user.</param>
+    /// <param name="token">Token to cancel the operation.</param>
     /// <returns>Channel to receive notications.</returns>
-    ChannelReader<ChatNotification> Register(Guid clientId, Guid userId);
+    Task<ChannelReader<ChatNotification>> RegisterAsync(Guid clientId, Guid userId, CancellationToken token = default);
 
     /// <summary>
     ///     Unregister channel for a client.
     /// </summary>
     /// <param name="clientId">Unique id of the client.</param>
+    /// <param name="token">Token to cancel the operation.</param>
     /// <returns><c>true</c> if opteration was successful.</returns>
-    bool Unregister(Guid clientId);
+    Task<bool> UnregisterAsync(Guid clientId, CancellationToken token = default);
 
     /// <summary>
     ///     Publish a notification to connected clients.
