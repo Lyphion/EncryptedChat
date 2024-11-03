@@ -36,11 +36,12 @@ create table messages
             references users
             on update cascade on delete cascade,
     message_id             INT  not null,
-    encrypted_content_type BLOB not null,
     encrypted_message      BLOB not null,
-    timestamp              TEXT not null,
+    created                TEXT not null,
+    edited                 TEXT,
     key_version            INT  not null,
     deleted                INT  not null,
+    encrypted_content_type BLOB not null,
     constraint messages_pk
         primary key (sender_id, receiver_id, message_id)
 );

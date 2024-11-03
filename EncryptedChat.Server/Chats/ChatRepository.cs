@@ -52,7 +52,7 @@ public sealed class ChatRepository : IChatRepository
                 INSERT INTO messages (sender_id, receiver_id, message_id, encrypted_content_type, encrypted_message, timestamp, key_version, deleted)
                 VALUES (@SenderId, @ReceiverId, @MessageId, @EncryptedContentType, @EncryptedMessage, @Timestamp, @KeyVersion, @Deleted);
                 """,
-                new { message.SenderId, message.ReceiverId, MessageId = messageId, message.EncryptedContentType, message.EncryptedMessage, message.Timestamp, message.KeyVersion, message.Deleted }
+                new { message.SenderId, message.ReceiverId, MessageId = messageId, message.EncryptedContentType, message.EncryptedMessage, message.Created, message.KeyVersion, message.Deleted }
             ).ConfigureAwait(false);
 
             return result > 0 ? messageId : 0;
@@ -63,9 +63,9 @@ public sealed class ChatRepository : IChatRepository
             return 0;
         }
     }
-
+    
     /// <inheritdoc />
-    public async Task<bool> DeleteMessageAsync(Guid senderId, Guid receiverId, uint messageId, CancellationToken token = default)
+    public async Task<bool> EditMessageAsync(Guid senderId, Guid receiverId, uint messageId, ReadOnlyMemory<byte> encryptedMessage, uint keyVersion, DateTime timestamp, CancellationToken token = default)
     {
         try
         {
@@ -74,17 +74,42 @@ public sealed class ChatRepository : IChatRepository
             int result = await connection.ExecuteAsync(
                 """
                 UPDATE messages
-                SET deleted = 1, encrypted_message = ''
-                WHERE sender_id = @senderId AND receiver_id = @receiverId AND message_id = @messageId;
+                SET encrypted_message = @encryptedMessage, key_version = @keyVersion, edited = @timestamp
+                WHERE sender_id = @senderId AND receiver_id = @receiverId AND message_id = @messageId AND deleted = 0;
                 """,
-                new { senderId, receiverId, messageId }
+                new { senderId, receiverId, messageId, encryptedMessage, keyVersion, timestamp }
             ).ConfigureAwait(false);
 
             return result > 0;
         }
         catch (DbException ex)
         {
-            _logger.LogError(ex, "Failed to delete message {MessageId} between '{UserId}' and '{ReceiverId}'", messageId, senderId, receiverId);
+            _logger.LogError(ex, "Failed to update message {MessageId} between '{SenderId}' and '{ReceiverId}'", messageId, senderId, receiverId);
+            return false;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> DeleteMessageAsync(Guid senderId, Guid receiverId, uint messageId, DateTime timestamp, CancellationToken token = default)
+    {
+        try
+        {
+            using var connection = await _connectionFactory.CreateConnectionAsync(token).ConfigureAwait(false);
+
+            int result = await connection.ExecuteAsync(
+                """
+                UPDATE messages
+                SET deleted = 1, encrypted_message = '', edited = @timestamp
+                WHERE sender_id = @senderId AND receiver_id = @receiverId AND message_id = @messageId AND deleted = 0;
+                """,
+                new { senderId, receiverId, messageId, timestamp }
+            ).ConfigureAwait(false);
+
+            return result > 0;
+        }
+        catch (DbException ex)
+        {
+            _logger.LogError(ex, "Failed to delete message {MessageId} between '{SenderId}' and '{ReceiverId}'", messageId, senderId, receiverId);
             return false;
         }
     }

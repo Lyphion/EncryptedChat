@@ -6,11 +6,13 @@ import "google/protobuf/timestamp.proto";
 
 service Chat {
   rpc SendMessage(ChatMessageRequest) returns (ChatMessageResponse);
+  
+  rpc EditMessage(EditChatMessageRequest) returns (EditChatMessageResponse);
 
   rpc DeleteMessage(DeleteChatMessageRequest) returns (DeleteChatMessageResponse);
 
   rpc GetMessages(ChatRequest) returns (ChatResponse);
-  
+
   rpc GetChatOverview(ChatOverviewRequest) returns (ChatOverviewResponse);
 
   rpc ReceiveMessages(ChatReceiveRequest) returns (stream ChatNotification);
@@ -28,6 +30,17 @@ message ChatMessageRequest {
 }
 
 message ChatMessageResponse {
+  bool success = 1;
+}
+
+message EditChatMessageRequest {
+  string target_id = 1;
+  uint32 message_id = 2;
+  bytes encrypted_message = 3;
+  uint32 key_version = 4;
+}
+
+message EditChatMessageResponse {
   bool success = 1;
 }
 
@@ -64,9 +77,10 @@ message ChatNotification {
   uint32 message_id = 3;
   bytes encrypted_content_type = 4;
   bytes encrypted_message = 5;
-  google.protobuf.Timestamp timestamp = 6;
-  uint32 key_version = 7;
-  bool deleted = 8;
+  google.protobuf.Timestamp created = 6;
+  optional google.protobuf.Timestamp edited = 7;
+  uint32 key_version = 8;
+  bool deleted = 9;
 }
 
 message CryptographicKeysRequest {
@@ -77,7 +91,7 @@ message CryptographicKeysRequest {
 
 message CryptographicKeysReponse {
   repeated CryptographicKey keys = 1;
-  
+
   message CryptographicKey {
     bytes key = 1;
     uint32 version = 2;

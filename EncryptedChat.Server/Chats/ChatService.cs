@@ -66,7 +66,7 @@ public sealed class ChatService : Chat.ChatBase
             ReceiverId = receiverId,
             EncryptedContentType = request.EncryptedContentType.ToByteArray(),
             EncryptedMessage = request.EncryptedMessage.ToByteArray(),
-            Timestamp = now,
+            Created = now,
             KeyVersion = request.KeyVersion,
         }).ConfigureAwait(false);
 
@@ -84,12 +84,62 @@ public sealed class ChatService : Chat.ChatBase
             MessageId = messageId,
             EncryptedContentType = request.EncryptedContentType,
             EncryptedMessage = request.EncryptedMessage,
-            Timestamp = now.ToTimestamp(),
+            Created = now.ToTimestamp(),
+            Edited = null,
             KeyVersion = request.KeyVersion,
             Deleted = false
         }).ConfigureAwait(false);
 
         return new ChatMessageResponse { Success = true };
+    }
+
+    /// <summary>
+    ///     Edit a message in the chat between two users.
+    /// </summary>
+    /// <param name="request">Request parameter.</param>
+    /// <param name="context">Connection context.</param>
+    /// <returns>Success or failure message.</returns>
+    public override async Task<EditChatMessageResponse> EditMessage(EditChatMessageRequest request, ServerCallContext context)
+    {
+        // Reveive id of the user
+        string? userIdString = context.GetHttpContext().User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(userIdString, out var userId))
+            return new EditChatMessageResponse { Success = false };
+
+        // Check if a valid target id is provied
+        if (!Guid.TryParse(request.TargetId, out var targetId))
+            return new EditChatMessageResponse { Success = false };
+
+        var now = DateTime.UtcNow;
+        bool success = await _chatRepository
+            .EditMessageAsync(userId, targetId, request.MessageId, request.EncryptedMessage.Memory, request.KeyVersion, now)
+            .ConfigureAwait(false);
+
+        // Check if edit was succesful
+        if (!success)
+            return new EditChatMessageResponse { Success = false };
+
+        _logger.LogDebug("Edited message {MessageId} between '{UserId}' and '{TargetId}'", request.MessageId, userId, targetId);
+
+        // Get edited message to send update
+        var messages = await _chatRepository.GetMessagesAsync(userId, targetId, request.MessageId, request.MessageId).ConfigureAwait(false);
+        var message = messages.First();
+
+        // Notify connected clients in the background
+        _ = _notificationHandler.PublishNotificationAsync(new ChatNotification
+        {
+            SenderId = message.SenderId.ToString(),
+            ReceiverId = message.ReceiverId.ToString(),
+            MessageId = message.MessageId,
+            EncryptedContentType = UnsafeByteOperations.UnsafeWrap(message.EncryptedContentType),
+            EncryptedMessage = UnsafeByteOperations.UnsafeWrap(message.EncryptedMessage),
+            Created = message.Created.ToTimestamp(),
+            Edited = message.Edited?.ToTimestamp(),
+            KeyVersion = message.KeyVersion,
+            Deleted = message.Deleted
+        }).ConfigureAwait(false);
+
+        return new EditChatMessageResponse { Success = true };
     }
 
     /// <summary>
@@ -109,8 +159,9 @@ public sealed class ChatService : Chat.ChatBase
         if (!Guid.TryParse(request.TargetId, out var targetId))
             return new DeleteChatMessageResponse { Success = false };
 
+        var now = DateTime.UtcNow;
         bool success = await _chatRepository
-            .DeleteMessageAsync(userId, targetId, request.MessageId)
+            .DeleteMessageAsync(userId, targetId, request.MessageId, now)
             .ConfigureAwait(false);
 
         // Check if deletion was succesful
@@ -126,14 +177,15 @@ public sealed class ChatService : Chat.ChatBase
         // Notify connected clients in the background
         _ = _notificationHandler.PublishNotificationAsync(new ChatNotification
         {
-            SenderId = userId.ToString(),
-            ReceiverId = targetId.ToString(),
-            MessageId = request.MessageId,
+            SenderId = message.SenderId.ToString(),
+            ReceiverId = message.ReceiverId.ToString(),
+            MessageId = message.MessageId,
             EncryptedContentType = UnsafeByteOperations.UnsafeWrap(message.EncryptedContentType),
-            EncryptedMessage = ByteString.Empty,
-            Timestamp = message.Timestamp.ToTimestamp(),
+            EncryptedMessage = UnsafeByteOperations.UnsafeWrap(message.EncryptedMessage),
+            Created = message.Created.ToTimestamp(),
+            Edited = message.Edited?.ToTimestamp(),
             KeyVersion = message.KeyVersion,
-            Deleted = true
+            Deleted = message.Deleted
         }).ConfigureAwait(false);
 
         return new DeleteChatMessageResponse { Success = true };
@@ -172,7 +224,8 @@ public sealed class ChatService : Chat.ChatBase
             MessageId = m.MessageId,
             EncryptedContentType = UnsafeByteOperations.UnsafeWrap(m.EncryptedContentType),
             EncryptedMessage = UnsafeByteOperations.UnsafeWrap(m.EncryptedMessage),
-            Timestamp = m.Timestamp.ToTimestamp(),
+            Created = m.Created.ToTimestamp(),
+            Edited = m.Edited?.ToTimestamp(),
             KeyVersion = m.KeyVersion,
             Deleted = m.Deleted
         }));
@@ -207,7 +260,8 @@ public sealed class ChatService : Chat.ChatBase
             MessageId = m.MessageId,
             EncryptedContentType = UnsafeByteOperations.UnsafeWrap(m.EncryptedContentType),
             EncryptedMessage = UnsafeByteOperations.UnsafeWrap(m.EncryptedMessage),
-            Timestamp = m.Timestamp.ToTimestamp(),
+            Created = m.Created.ToTimestamp(),
+            Edited = m.Edited?.ToTimestamp(),
             KeyVersion = m.KeyVersion,
             Deleted = m.Deleted
         }));

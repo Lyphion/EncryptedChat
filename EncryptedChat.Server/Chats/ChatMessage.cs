@@ -36,7 +36,12 @@ public sealed class ChatMessage
     /// <summary>
     ///     Timestamp when the message was sent.
     /// </summary>
-    public required DateTime Timestamp { get; init; }
+    public required DateTime Created { get; init; }
+
+    /// <summary>
+    ///     Optional timestamp when the message was edited or deleted.
+    /// </summary>
+    public DateTime? Edited { get; set; }
 
     /// <summary>
     ///     The version of the shared encryption key used.

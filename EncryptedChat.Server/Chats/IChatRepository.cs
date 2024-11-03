@@ -12,6 +12,19 @@ public interface IChatRepository
     /// <param name="token">Token to cancel the operation.</param>
     /// <returns>Id of the message in the chat or <c>0</c> if the operation failed.</returns>
     Task<uint> SaveMessageAsync(ChatMessage message, CancellationToken token = default);
+    
+    /// <summary>
+    ///     Edit a message between users.
+    /// </summary>
+    /// <param name="senderId">Id of the sender.</param>
+    /// <param name="receiverId">Id of the receiver.</param>
+    /// <param name="messageId">Id the message in the chat.</param>
+    /// <param name="encryptedMessage">New encrypted message.</param>
+    /// <param name="keyVersion">The version of the shared encryption key used.</param>
+    /// <param name="timestamp">Timestamp when the message was edited.</param>
+    /// <param name="token">Token to cancel the operation.</param>
+    /// <returns><c>true</c> if operation was successful.</returns>
+    Task<bool> EditMessageAsync(Guid senderId, Guid receiverId, uint messageId, ReadOnlyMemory<byte> encryptedMessage, uint keyVersion, DateTime timestamp, CancellationToken token = default);
 
     /// <summary>
     ///     Delete a message in the chat between two users.
@@ -19,9 +32,10 @@ public interface IChatRepository
     /// <param name="senderId">Id of the sender.</param>
     /// <param name="receiverId">Id of the receiver.</param>
     /// <param name="messageId">Id the message in the chat.</param>
+    /// <param name="timestamp">Timestamp when the message was deleted.</param>
     /// <param name="token">Token to cancel the operation.</param>
     /// <returns><c>true</c> if operation was successful.</returns>
-    Task<bool> DeleteMessageAsync(Guid senderId, Guid receiverId, uint messageId, CancellationToken token = default);
+    Task<bool> DeleteMessageAsync(Guid senderId, Guid receiverId, uint messageId, DateTime timestamp, CancellationToken token = default);
 
     /// <summary>
     ///     Receive messages in the chat between two users.
